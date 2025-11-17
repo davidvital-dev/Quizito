@@ -19,7 +19,7 @@ O projeto seguirá uma estrutura modular para facilitar a manutenção e os test
 ```
 sistema_quiz_educacional/
 ├── quiz_app/
-│   ├── modelos.py          # Classes de POO (Pergunta, Quiz, Usuario, Tentativa)
+│   ├── modelos.py          # Classes de POO (Pergunta, Quiz, Usuario, Tentativa, Dificuldade)
 │   ├── dados.py            # Funções de persistência (salvar/carregar JSON)
 │   ├── relatorios.py       # Lógica para geração de relatórios
 │   └── cli.py              # Lógica da interface de linha de comando
