@@ -33,47 +33,45 @@ sistema_quiz_educacional/
 
 ## 3. Modelagem Orientada a Objetos (UML Textual)
 
-### 3.1. Classes e Atributos
+### 3.1. Classes e Atributos (Implementação da Semana 2)
+
+As classes base foram implementadas com foco em **encapsulamento** e **imutabilidade** para garantir a integridade dos dados.
 
 | Classe | Atributo | Tipo | Descrição | Destaque POO |
 | :--- | :--- | :--- | :--- | :--- |
 | **Dificuldade** | FACIL, MEDIO, DIFICIL | Enum | Níveis de dificuldade válidos. | Encapsulamento de valores fixos. |
 | **Pergunta** | enunciado | str | O texto da pergunta. | |
-| | alternativas | list[str] | Lista de 3 a 5 opções de resposta. | **Validação via @property** |
+| | alternativas | tuple[str] | Tupla de 3 a 5 opções de resposta. | **Encapsulamento Defensivo (Tupla)** |
 | | indice_correto | int | Índice da alternativa correta (0 a N-1). | **Validação via @property** |
-| | dificuldade | Dificuldade | Nível de dificuldade da pergunta. | **Validação via @property** |
+| | dificuldade | Dificuldade | Nível de dificuldade da pergunta. | |
 | | tema | str | Tema ao qual a pergunta pertence. | |
 | **Quiz** | titulo | str | Título do quiz. | |
-| | perguntas | list[Pergunta] | Lista de objetos Pergunta. | **Composição** |
-| | pontuacao_maxima | int | Pontuação máxima calculada automaticamente. | |
-| | tempo_limite | int (opcional) | Tempo máximo em minutos. | |
-| | num_tentativas | int (opcional) | Número máximo de tentativas permitidas. | |
-| **Usuario** | id | str | Identificador único (matrícula ou ID). | |
-| | nome | str | Nome completo do usuário. | |
-| | email | str | E-mail do usuário. | |
-| | historico_tentativas | list[Tentativa] | Lista de todas as tentativas. | **Composição** |
-| **Tentativa** | quiz | Quiz | Referência ao Quiz respondido. | |
-| | usuario | Usuario | Referência ao Usuário. | |
-| | respostas | dict[Pergunta, int] | Mapeamento Pergunta -> Índice da resposta. | |
+| | perguntas | tuple[Pergunta] | Tupla de objetos Pergunta. | **Composição e Imutabilidade (Tupla)** |
+| | max_tentativas | int | Número máximo de tentativas permitidas. | |
+| | tempo_limite_min | int (opcional) | Tempo máximo em minutos. | |
+| **Usuario** | nome, email, matricula_id | str | Dados de identificação. | **Getters via @property** |
+| | tentativas | tuple[Tentativa] | Histórico de tentativas. | **Composição e Imutabilidade (Tupla)** |
+| **Tentativa** | quiz, usuario | Quiz, Usuario | Referências aos objetos relacionados. | **Getters via @property** |
+| | respostas | dict[int, int] | Mapeamento Índice Pergunta -> Índice da resposta. | |
 | | pontuacao_obtida | int | Pontuação final alcançada. | |
-| | tempo_gasto | float | Tempo total gasto. | |
+| | tempo_gasto_seg | int | Tempo total gasto em segundos. | |
 | | concluida | bool | Indica se a tentativa foi concluída. | |
 
-### 3.2. Métodos Principais
+### 3.2. Métodos Principais (Implementação da Semana 2)
 
 | Classe | Método | Propósito | Destaque POO |
 | :--- | :--- | :--- | :--- |
-| **Pergunta** | `__init__` | Construtor. | |
-| | `@property` / `.setter` | Validação de dados (alternativas, índice, dificuldade). | **Encapsulamento** |
-| | `__str__` | Exibição amigável da pergunta. | **Método Especial** |
-| | `__eq__` | Comparação por enunciado e tema (para evitar duplicidade). | **Método Especial** |
-| **Quiz** | `adicionar_pergunta` | Adiciona pergunta e recalcula pontuação. | |
+| **Pergunta** | `__init__` | Construtor que utiliza os *setters* para validação inicial. | |
+| | `@property` / `.setter` | Validação de dados (alternativas, índice correto). | **Encapsulamento** |
+| | `__str__` | Exibição amigável da pergunta, incluindo a resposta correta (para debug). | **Método Especial** |
+| | `__eq__` | Comparação por enunciado e tema (para evitar duplicidade no Quiz). | **Método Especial** |
+| **Quiz** | `adicionar_pergunta` | Adiciona pergunta, garantindo a unicidade. | |
 | | `calcular_pontuacao_maxima` | Calcula a pontuação com base nos pesos de dificuldade. | |
 | | `__len__`, `__iter__` | Permite usar `len()` e iterar sobre as perguntas. | **Métodos Especiais** |
-| **Usuario** | `registrar_tentativa` | Adiciona Tentativa ao histórico. | |
-| | `pode_tentar` | Verifica se o limite de tentativas foi atingido. | **Regra de Negócio** |
-| **Tentativa** | `registrar_resposta` | Registra a escolha do usuário. | |
-| | `finalizar_tentativa` | Calcula a pontuação e marca como concluída. | **Lógica de Negócio** |
+| **Usuario** | `adicionar_tentativa` | Adiciona Tentativa ao histórico, validando se está concluída. | **Regra de Negócio** |
+| **Tentativa** | `registrar_resposta` | Registra a escolha do usuário, validando índices. | |
+| | `finalizar_tentativa` | Calcula a pontuação e marca como concluída. **(Baixo Acoplamento)** | **Lógica de Negócio** |
+| | `obter_gabarito` | Retorna um resumo detalhado das respostas e acertos. | |
 
 ### 3.3. Relacionamentos
 
@@ -88,4 +86,4 @@ sistema_quiz_educacional/
 **Desenvolvido por:** David Josué Vital Santos
 **Instituição:** Universidade Federal do Cariri (UFCA)
 **Disciplina:** Programação Orientada a Objetos (POO)
-**Status:** Modelagem Inicial Concluída (Entrega Semana 1)
+**Status:** Classes Base Implementadas e Validadas (Entrega Semana 2)

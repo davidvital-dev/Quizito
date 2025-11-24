@@ -130,18 +130,112 @@ class Quiz:
 
 class Usuario:
     """
-    Representa um usuário (participante) do sistema.
-    
-    Responsável por armazenar dados de identificação e manter o histórico
-    de todas as Tentativas realizadas (Composição).
+    Participante do sistema. Mantém histórico de tentativas.
     """
-    pass
+    def __init__(self, nome: str, email: str, matricula_id: str):
+        self._nome = nome
+        self._email = email
+        self._matricula_id = matricula_id
+        self._tentativas: List['Tentativa'] = []
+
+    @property
+    def nome(self) -> str:
+        return self._nome
+
+    @property
+    def email(self) -> str:
+        return self._email
+
+    @property
+    def matricula_id(self) -> str:
+        return self._matricula_id
+
+    @property
+    def tentativas(self) -> Tuple['Tentativa', ...]:
+        """Retorna histórico imutável."""
+        return tuple(self._tentativas)
+
+    def adicionar_tentativa(self, tentativa: 'Tentativa'):
+        if not tentativa.concluida:
+             raise ValueError("Apenas tentativas concluídas devem ir para o histórico.")
+        self._tentativas.append(tentativa)
+
+    def __str__(self) -> str:
+        return f"{self._nome} ({self._matricula_id}) | Histórico: {len(self._tentativas)} quizzes"
 
 class Tentativa:
     """
-    Representa uma única sessão de resposta de um Quiz por um Usuário.
-    
-    Responsável por registrar as respostas, calcular a pontuação obtida,
-    o tempo gasto e o status de conclusão da tentativa.
+    Sessão de resolução de um Quiz.
     """
-    pass
+    def __init__(self, quiz: Quiz, usuario: Usuario):
+        self._quiz = quiz
+        self._usuario = usuario
+        self._respostas: Dict[int, int] = {} 
+        self._pontuacao_obtida = 0
+        self._tempo_gasto_seg = 0
+        self._concluida = False
+
+    @property
+    def quiz(self) -> Quiz:
+        return self._quiz
+
+    @property
+    def usuario(self) -> Usuario:
+        return self._usuario
+
+    @property
+    def concluida(self) -> bool:
+        return self._concluida
+
+    @property
+    def pontuacao_obtida(self) -> int:
+        return self._pontuacao_obtida
+
+    def registrar_resposta(self, indice_pergunta: int, indice_resposta: int):
+        if self._concluida:
+            raise RuntimeError("Tentativa já finalizada. Não é possível alterar respostas.")
+        
+        # Validações de índice
+        perguntas = self._quiz.perguntas # Acessa a tupla
+        if not (0 <= indice_pergunta < len(perguntas)):
+            raise IndexError("Índice da pergunta inválido.")
+        
+        pergunta_atual = perguntas[indice_pergunta]
+        if not (0 <= indice_resposta < len(pergunta_atual.alternativas)):
+            raise ValueError("Índice da alternativa inválido.")
+
+        self._respostas[indice_pergunta] = indice_resposta
+
+    def finalizar_tentativa(self, tempo_gasto_seg: int, pesos: Dict[str, int]):
+        if self._concluida:
+            return 
+
+        self._tempo_gasto_seg = tempo_gasto_seg
+        self._pontuacao_obtida = self._calcular_pontuacao(pesos)
+        self._concluida = True
+        # NOTA: Removemos a chamada self._usuario.adicionar_tentativa(self)
+        # para reduzir acoplamento. O controlador deve fazer isso.
+
+    def _calcular_pontuacao(self, pesos: Dict[str, int]) -> int:
+        pontuacao = 0
+        perguntas = self._quiz.perguntas
+        for i, pergunta in enumerate(perguntas):
+            resp_user = self._respostas.get(i)
+            if resp_user is not None and pergunta.verificar_resposta(resp_user):
+                pontuacao += pesos.get(pergunta.dificuldade.value, 0)
+        return pontuacao
+
+    def obter_gabarito(self) -> List[Dict[str, Any]]:
+        gabarito = []
+        perguntas = self._quiz.perguntas
+        for i, pergunta in enumerate(perguntas):
+            resp_user = self._respostas.get(i)
+            acertou = (resp_user is not None and pergunta.verificar_resposta(resp_user))
+            
+            gabarito.append({
+                "enunciado": pergunta.enunciado,
+                "sua_resposta": pergunta.alternativas[resp_user] if resp_user is not None else None,
+                "correta": pergunta.alternativas[pergunta.indice_correto],
+                "acertou": acertou
+            })
+        return gabarito
