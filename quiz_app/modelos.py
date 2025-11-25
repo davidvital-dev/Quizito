@@ -213,8 +213,6 @@ class Tentativa:
         self._tempo_gasto_seg = tempo_gasto_seg
         self._pontuacao_obtida = self._calcular_pontuacao(pesos)
         self._concluida = True
-        # NOTA: Removemos a chamada self._usuario.adicionar_tentativa(self)
-        # para reduzir acoplamento. O controlador deve fazer isso.
 
     def _calcular_pontuacao(self, pesos: Dict[str, int]) -> int:
         pontuacao = 0
