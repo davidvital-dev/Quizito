@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import List, Optional, Dict, Tuple, Any
+from abc import ABC, abstractmethod
 
 class Dificuldade(Enum):
     """Define os níveis de dificuldade válidos para as perguntas."""
@@ -7,16 +8,76 @@ class Dificuldade(Enum):
     MEDIO = "MÉDIO"
     DIFICIL = "DIFÍCIL"
 
-class Pergunta:
+class Pergunta(ABC):
+    """
+    Classe base abstrata para todos os tipos de perguntas.
+    """
+    def __init__(self, enunciado: str, dificuldade: Dificuldade, tema: str):
+        self._enunciado = enunciado
+        self._dificuldade = dificuldade
+        self._tema = tema
+
+    @property
+    def enunciado(self) -> str:
+        return self._enunciado
+
+    @property
+    def dificuldade(self) -> Dificuldade:
+        return self._dificuldade
+
+    @property
+    def tema(self) -> str:
+        return self._tema
+
+    @abstractmethod
+    def verificar_resposta(self, resposta: Any) -> bool:
+        """Verifica se a resposta fornecida está correta."""
+        pass
+
+    @abstractmethod
+    def __str__(self) -> str:
+        """Representação em string da pergunta."""
+        pass
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Pergunta):
+            return NotImplemented
+        # Comparar perguntas por enunciado e tema (regra de negócio)
+        return (self._enunciado == other._enunciado and 
+                self._tema == other._tema)
+
+class PerguntaVerdadeiroFalso(Pergunta): # Novo tipo de pergunta
+    """
+    Representa uma pergunta de Verdadeiro ou Falso.
+    """
+    def __init__(self, enunciado: str, resposta_correta: bool, 
+                 dificuldade: Dificuldade, tema: str):
+        super().__init__(enunciado, dificuldade, tema)
+        self._resposta_correta = resposta_correta
+
+    @property
+    def resposta_correta(self) -> bool:
+        return self._resposta_correta
+
+    def verificar_resposta(self, resposta: bool) -> bool:
+        """Verifica se a resposta fornecida (True/False) está correta."""
+        return resposta == self._resposta_correta
+
+    def __str__(self) -> str:
+        """Implementação do método abstrato."""
+        status = "VERDADEIRO" if self._resposta_correta else "FALSO"
+        return (f"[{self.tema}] ({self.dificuldade.value})\n"
+                f"{self.enunciado}\n"
+                f"[V] Verdadeiro | [F] Falso (CORRETA: {status})")
+
+class PerguntaMultiplaEscolha(Pergunta): # Herda de Pergunta
     """
     Representa uma pergunta de múltipla escolha.
     Valida integridade dos dados (3-5 alternativas, índice válido).
     """
     def __init__(self, enunciado: str, alternativas: List[str], indice_correto: int, 
                  dificuldade: Dificuldade, tema: str):
-        self._enunciado = enunciado
-        self._dificuldade = dificuldade
-        self._tema = tema
+        super().__init__(enunciado, dificuldade, tema) # Chama o construtor da classe base
         
         # Inicializa variáveis internas antes da validação
         self._alternativas: List[str] = []
@@ -25,10 +86,6 @@ class Pergunta:
         # Usa os setters para validação inicial
         self.alternativas = alternativas
         self.indice_correto = indice_correto
-
-    @property
-    def enunciado(self) -> str:
-        return self._enunciado
 
     @property
     def alternativas(self) -> Tuple[str, ...]:
@@ -62,28 +119,16 @@ class Pergunta:
             raise ValueError(f"Índice {novo_indice} inválido para {len(self._alternativas)} alternativas.")
         self._indice_correto = novo_indice
 
-    @property
-    def dificuldade(self) -> Dificuldade:
-        return self._dificuldade
-
-    @property
-    def tema(self) -> str:
-        return self._tema
-
     def verificar_resposta(self, indice_resposta: int) -> bool:
+        """Implementação do método abstrato."""
         return indice_resposta == self._indice_correto
 
     def __str__(self) -> str:
+        """Implementação do método abstrato."""
         alternativas_str = "\n".join([f"[{i}] {alt}{' (CORRETA)' if i == self._indice_correto else ''}" 
                                       for i, alt in enumerate(self._alternativas)])
-        return (f"[{self._tema}] ({self._dificuldade.value})\n"
-                f"{self._enunciado}\n{alternativas_str}")
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Pergunta):
-            return NotImplemented
-        return (self._enunciado == other._enunciado and 
-                self._tema == other._tema)
+        return (f"[{self.tema}] ({self.dificuldade.value})\n"
+                f"{self.enunciado}\n{alternativas_str}")
 
 class Quiz:
     """
@@ -163,6 +208,20 @@ class Usuario:
     def __str__(self) -> str:
         return f"{self._nome} ({self._matricula_id}) | Histórico: {len(self._tentativas)} quizzes"
 
+    # Novo método para a Semana 3
+    def pode_tentar(self, quiz: Quiz) -> bool:
+        """Verifica se o usuário pode realizar o quiz com base no limite de tentativas."""
+        if quiz.max_tentativas is None:
+            return True # Sem limite
+        
+        tentativas_concluidas = 0
+        for tentativa in self._tentativas:
+            # Compara o quiz pelo título para simplificar, mas o ideal seria por um ID único
+            if tentativa.quiz.titulo == quiz.titulo and tentativa.concluida:
+                tentativas_concluidas += 1
+        
+        return tentativas_concluidas < quiz.max_tentativas
+
 class Tentativa:
     """
     Sessão de resolução de um Quiz.
@@ -170,7 +229,8 @@ class Tentativa:
     def __init__(self, quiz: Quiz, usuario: Usuario):
         self._quiz = quiz
         self._usuario = usuario
-        self._respostas: Dict[int, int] = {} 
+        # Respostas armazena o índice da pergunta e a resposta (int para ME, bool para VF)
+        self._respostas: Dict[int, Any] = {} 
         self._pontuacao_obtida = 0
         self._tempo_gasto_seg = 0
         self._concluida = False
@@ -191,7 +251,7 @@ class Tentativa:
     def pontuacao_obtida(self) -> int:
         return self._pontuacao_obtida
 
-    def registrar_resposta(self, indice_pergunta: int, indice_resposta: int):
+    def registrar_resposta(self, indice_pergunta: int, resposta: Any):
         if self._concluida:
             raise RuntimeError("Tentativa já finalizada. Não é possível alterar respostas.")
         
@@ -201,10 +261,20 @@ class Tentativa:
             raise IndexError("Índice da pergunta inválido.")
         
         pergunta_atual = perguntas[indice_pergunta]
-        if not (0 <= indice_resposta < len(pergunta_atual.alternativas)):
-            raise ValueError("Índice da alternativa inválido.")
-
-        self._respostas[indice_pergunta] = indice_resposta
+        
+        # Validação específica para PerguntaMultiplaEscolha
+        if isinstance(pergunta_atual, PerguntaMultiplaEscolha):
+            if not isinstance(resposta, int) or not (0 <= resposta < len(pergunta_atual.alternativas)):
+                raise ValueError("Resposta inválida para PerguntaMultiplaEscolha (deve ser um índice válido).")
+        
+        # Validação específica para PerguntaVerdadeiroFalso
+        elif isinstance(pergunta_atual, PerguntaVerdadeiroFalso):
+            if not isinstance(resposta, bool):
+                raise ValueError("Resposta inválida para PerguntaVerdadeiroFalso (deve ser True ou False).")
+        
+        # Se for um tipo de pergunta desconhecido, apenas registra
+        
+        self._respostas[indice_pergunta] = resposta
 
     def finalizar_tentativa(self, tempo_gasto_seg: int, pesos: Dict[str, int]):
         if self._concluida:
@@ -230,10 +300,22 @@ class Tentativa:
             resp_user = self._respostas.get(i)
             acertou = (resp_user is not None and pergunta.verificar_resposta(resp_user))
             
+            sua_resposta_str = None
+            correta_str = "N/A"
+
+            if isinstance(pergunta, PerguntaMultiplaEscolha):
+                if resp_user is not None:
+                    sua_resposta_str = pergunta.alternativas[resp_user]
+                correta_str = pergunta.alternativas[pergunta.indice_correto]
+            elif isinstance(pergunta, PerguntaVerdadeiroFalso):
+                if resp_user is not None:
+                    sua_resposta_str = "VERDADEIRO" if resp_user else "FALSO"
+                correta_str = "VERDADEIRO" if pergunta.resposta_correta else "FALSO"
+
             gabarito.append({
                 "enunciado": pergunta.enunciado,
-                "sua_resposta": pergunta.alternativas[resp_user] if resp_user is not None else None,
-                "correta": pergunta.alternativas[pergunta.indice_correto],
+                "sua_resposta": sua_resposta_str,
+                "correta": correta_str,
                 "acertou": acertou
             })
         return gabarito
