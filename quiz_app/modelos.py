@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List, Optional, Dict, Tuple, Any
-from abc import ABC, abstractmethod
+import time
+from abc import ABC, abstractmethod 
 
 class Dificuldade(Enum):
     """Define os níveis de dificuldade válidos para as perguntas."""
@@ -8,7 +9,7 @@ class Dificuldade(Enum):
     MEDIO = "MÉDIO"
     DIFICIL = "DIFÍCIL"
 
-class Pergunta(ABC):
+class Pergunta(ABC): 
     """
     Classe base abstrata para todos os tipos de perguntas.
     """
@@ -36,17 +37,22 @@ class Pergunta(ABC):
 
     @abstractmethod
     def __str__(self) -> str:
-        """Representação em string da pergunta."""
+        """Representação em string da pergunta (com gabarito)."""
+        pass
+
+    @abstractmethod
+    def exibir_para_quiz(self) -> str:
+        """Exibe a pergunta para o quiz (SEM mostrar a resposta correta)."""
         pass
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Pergunta):
             return NotImplemented
-        # Comparar perguntas por enunciado e tema (regra de negócio)
+        
         return (self._enunciado == other._enunciado and 
                 self._tema == other._tema)
 
-class PerguntaVerdadeiroFalso(Pergunta): # Novo tipo de pergunta
+class PerguntaVerdadeiroFalso(Pergunta): 
     """
     Representa uma pergunta de Verdadeiro ou Falso.
     """
@@ -64,26 +70,29 @@ class PerguntaVerdadeiroFalso(Pergunta): # Novo tipo de pergunta
         return resposta == self._resposta_correta
 
     def __str__(self) -> str:
-        """Implementação do método abstrato."""
+        """Exibição com gabarito (mostra resposta correta)."""
         status = "VERDADEIRO" if self._resposta_correta else "FALSO"
         return (f"[{self.tema}] ({self.dificuldade.value})\n"
                 f"{self.enunciado}\n"
                 f"[V] Verdadeiro | [F] Falso (CORRETA: {status})")
 
-class PerguntaMultiplaEscolha(Pergunta): # Herda de Pergunta
+    def exibir_para_quiz(self) -> str:
+        """Exibição para o quiz (SEM mostrar resposta correta)."""
+        return (f"[{self.tema}] ({self.dificuldade.value})\n"
+                f"{self.enunciado}\n"
+                f"[V] Verdadeiro | [F] Falso")
+
+class PerguntaMultiplaEscolha(Pergunta): 
     """
     Representa uma pergunta de múltipla escolha.
     Valida integridade dos dados (3-5 alternativas, índice válido).
     """
     def __init__(self, enunciado: str, alternativas: List[str], indice_correto: int, 
                  dificuldade: Dificuldade, tema: str):
-        super().__init__(enunciado, dificuldade, tema) # Chama o construtor da classe base
+        super().__init__(enunciado, dificuldade, tema) 
         
-        # Inicializa variáveis internas antes da validação
         self._alternativas: List[str] = []
         self._indice_correto: int = -1 
-        
-        # Usa os setters para validação inicial
         self.alternativas = alternativas
         self.indice_correto = indice_correto
 
@@ -96,9 +105,9 @@ class PerguntaMultiplaEscolha(Pergunta): # Herda de Pergunta
     def alternativas(self, novas_alternativas: List[str]):
         if not (3 <= len(novas_alternativas) <= 5):
             raise ValueError("Uma pergunta deve ter entre 3 e 5 alternativas.")
-        self._alternativas = list(novas_alternativas) # Cria cópia defensiva
+        self._alternativas = list(novas_alternativas) 
         
-        # Se o índice atual estiver fora dos novos limites, invalida-o
+        
         if not (0 <= self._indice_correto < len(self._alternativas)):
              self._indice_correto = -1 
 
@@ -109,7 +118,7 @@ class PerguntaMultiplaEscolha(Pergunta): # Herda de Pergunta
     @indice_correto.setter
     def indice_correto(self, novo_indice: int):
         if not self._alternativas:
-             # Permite setar -1 se não houver alternativas, mas bloqueia outros índices
+             
              if novo_indice == -1: 
                  self._indice_correto = -1
                  return
@@ -124,8 +133,15 @@ class PerguntaMultiplaEscolha(Pergunta): # Herda de Pergunta
         return indice_resposta == self._indice_correto
 
     def __str__(self) -> str:
-        """Implementação do método abstrato."""
+        """Exibição com gabarito (mostra resposta correta)."""
         alternativas_str = "\n".join([f"[{i}] {alt}{' (CORRETA)' if i == self._indice_correto else ''}" 
+                                      for i, alt in enumerate(self._alternativas)])
+        return (f"[{self.tema}] ({self.dificuldade.value})\n"
+                f"{self.enunciado}\n{alternativas_str}")
+
+    def exibir_para_quiz(self) -> str:
+        """Exibição para o quiz (SEM mostrar resposta correta)."""
+        alternativas_str = "\n".join([f"[{i}] {alt}" 
                                       for i, alt in enumerate(self._alternativas)])
         return (f"[{self.tema}] ({self.dificuldade.value})\n"
                 f"{self.enunciado}\n{alternativas_str}")
@@ -141,7 +157,6 @@ class Quiz:
         self._perguntas: List[Pergunta] = []
         self._max_tentativas = max_tentativas
         self._tempo_limite_min = tempo_limite_min
-        
         if perguntas:
             for p in perguntas:
                 self.adicionar_pergunta(p)
@@ -177,10 +192,9 @@ class Usuario:
     """
     Participante do sistema. Mantém histórico de tentativas.
     """
-    def __init__(self, nome: str, email: str, matricula_id: str):
+    def __init__(self, nome: str, email: str):
         self._nome = nome
         self._email = email
-        self._matricula_id = matricula_id
         self._tentativas: List['Tentativa'] = []
 
     @property
@@ -190,10 +204,6 @@ class Usuario:
     @property
     def email(self) -> str:
         return self._email
-
-    @property
-    def matricula_id(self) -> str:
-        return self._matricula_id
 
     @property
     def tentativas(self) -> Tuple['Tentativa', ...]:
@@ -206,21 +216,33 @@ class Usuario:
         self._tentativas.append(tentativa)
 
     def __str__(self) -> str:
-        return f"{self._nome} ({self._matricula_id}) | Histórico: {len(self._tentativas)} quizzes"
+        return f"{self._nome} ({self._email}) | Histórico: {len(self._tentativas)} quizzes"
 
-    # Novo método para a Semana 3
+    
     def pode_tentar(self, quiz: Quiz) -> bool:
         """Verifica se o usuário pode realizar o quiz com base no limite de tentativas."""
         if quiz.max_tentativas is None:
             return True # Sem limite
-        
         tentativas_concluidas = 0
         for tentativa in self._tentativas:
             # Compara o quiz pelo título para simplificar, mas o ideal seria por um ID único
             if tentativa.quiz.titulo == quiz.titulo and tentativa.concluida:
                 tentativas_concluidas += 1
-        
         return tentativas_concluidas < quiz.max_tentativas
+
+    def gerar_relatorio_usuario(self, pesos: Dict[str, int]) -> Dict[str, Any]:
+        """Gera um relatório consolidado de todas as tentativas do usuário."""
+        relatorio = {
+            "nome": self.nome,
+            "matricula_id": self.matricula_id,
+            "total_tentativas": len(self._tentativas),
+            "resumos_tentativas": []
+        }
+        
+        for tentativa in self._tentativas:
+            relatorio["resumos_tentativas"].append(tentativa.gerar_resumo_tentativa(pesos))
+            
+        return relatorio
 
 class Tentativa:
     """
@@ -229,7 +251,6 @@ class Tentativa:
     def __init__(self, quiz: Quiz, usuario: Usuario):
         self._quiz = quiz
         self._usuario = usuario
-        # Respostas armazena o índice da pergunta e a resposta (int para ME, bool para VF)
         self._respostas: Dict[int, Any] = {} 
         self._pontuacao_obtida = 0
         self._tempo_gasto_seg = 0
@@ -255,24 +276,24 @@ class Tentativa:
         if self._concluida:
             raise RuntimeError("Tentativa já finalizada. Não é possível alterar respostas.")
         
-        # Validações de índice
-        perguntas = self._quiz.perguntas # Acessa a tupla
+        
+        perguntas = self._quiz.perguntas 
         if not (0 <= indice_pergunta < len(perguntas)):
             raise IndexError("Índice da pergunta inválido.")
         
         pergunta_atual = perguntas[indice_pergunta]
         
-        # Validação específica para PerguntaMultiplaEscolha
+        
         if isinstance(pergunta_atual, PerguntaMultiplaEscolha):
             if not isinstance(resposta, int) or not (0 <= resposta < len(pergunta_atual.alternativas)):
                 raise ValueError("Resposta inválida para PerguntaMultiplaEscolha (deve ser um índice válido).")
         
-        # Validação específica para PerguntaVerdadeiroFalso
+        
         elif isinstance(pergunta_atual, PerguntaVerdadeiroFalso):
             if not isinstance(resposta, bool):
                 raise ValueError("Resposta inválida para PerguntaVerdadeiroFalso (deve ser True ou False).")
         
-        # Se for um tipo de pergunta desconhecido, apenas registra
+        
         
         self._respostas[indice_pergunta] = resposta
 
@@ -319,3 +340,44 @@ class Tentativa:
                 "acertou": acertou
             })
         return gabarito
+
+    def gerar_resumo_tentativa(self, pesos: Dict[str, int]) -> Dict[str, Any]:
+        """Gera um resumo estatístico da tentativa."""
+        max_pontuacao = self._quiz.calcular_pontuacao_maxima(pesos)
+        
+        acertos = 0
+        erros = 0
+        
+        for item in self.obter_gabarito():
+            if item['acertou']:
+                acertos += 1
+            else:
+                erros += 1
+                
+        return {
+            "quiz_titulo": self._quiz.titulo,
+            "pontuacao_obtida": self._pontuacao_obtida,
+            "pontuacao_maxima": max_pontuacao,
+            "percentual_acerto": (acertos / len(self._quiz.perguntas)) * 100 if len(self._quiz.perguntas) > 0 else 0,
+            "tempo_gasto_seg": self._tempo_gasto_seg,
+            "acertos": acertos,
+            "erros": erros,
+            "concluida": self._concluida
+        }
+
+class Cronometro:
+    """
+    Classe utilitária para medir o tempo decorrido.
+    """
+    def __init__(self):
+        self._inicio = time.time()
+
+    @property
+    def tempo_decorrido_seg(self) -> int:
+        """Retorna o tempo decorrido em segundos (arredondado para baixo)."""
+        return int(time.time() - self._inicio)
+
+    @property
+    def tempo_decorrido_min(self) -> float:
+        """Retorna o tempo decorrido em minutos."""
+        return self.tempo_decorrido_seg / 60.0

@@ -1,0 +1,9 @@
+{
+    "DURACAO_PADRAO_QUIZ_MIN": 10,
+    "MAX_TENTATIVAS_PADRAO": 3,
+    "PESOS_DIFICULDADE": {
+        "FÁCIL": 1,
+        "MÉDIO": 2,
+        "DIFÍCIL": 3
+    }
+}
