@@ -205,6 +205,7 @@ def carregar_tentativas(caminho: Path, quizzes: List[Quiz], usuarios: List[Usuar
                 tentativa._tempo_gasto_seg = d.get('tempo_gasto_seg', 0)
                 tentativa._concluida = d.get('concluida', False)
                 
+                # Adiciona a tentativa ao usuário apenas durante o carregamento inicial
                 if tentativa.concluida:
                     usuario._tentativas.append(tentativa)
                 

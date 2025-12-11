@@ -188,7 +188,14 @@ def executar_quiz(quiz: Quiz, usuario: Usuario):
 
     limpar_tela()
     print("--- Quiz Finalizado ---")
-    print(f"Pontuação Obtida: {tentativa.pontuacao_obtida} de {quiz.calcular_pontuacao_maxima(CONFIGURACOES.get('PESOS_DIFICULDADE', {}))}")
+    pontuacao_max = quiz.calcular_pontuacao_maxima(CONFIGURACOES.get('PESOS_DIFICULDADE', {}))
+    print(f"Pontuação Obtida: {tentativa.pontuacao_obtida} de {pontuacao_max}")
+
+    gabarito = tentativa.obter_gabarito()
+    acertos_q = sum(1 for it in gabarito if it.get('acertou'))
+    total_q = len(gabarito)
+    print(f"Acertos: {acertos_q} de {total_q} perguntas")
+
     print(f"Tempo Gasto: {tempo_final} segundos")
     
     print("\n--- Gabarito ---")
