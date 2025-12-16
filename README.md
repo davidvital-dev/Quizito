@@ -23,9 +23,6 @@ Quizito/
 │   ├── dados.py            # Funções de persistência (salvar/carregar JSON, incluindo tentativas)
 │   ├── relatorios.py       # Módulo para geração de relatórios
 │   └── cli.py              # Interface de linha de comando (criação e execução de quizzes)
-├── tests/
-│   ├── test_modelos.py     # Testes unitários para as classes e regras de negócio
-│   └── test_dados.py       # Testes para a persistência
 ├── settings.json           # Arquivo de configurações (pesos de pontuação, limites)
 ├── main.py                 # Ponto de entrada da aplicação
 └── README.md               # Documentação do projeto
@@ -86,6 +83,10 @@ As classes foram implementadas com foco em **encapsulamento** e **imutabilidade*
 | | `salvar_usuarios`, `carregar_usuarios` | Salva e carrega objetos Usuario em JSON. | **Persistência Básica** |
 | | `salvar_tentativas`, `carregar_tentativas` | Salva e carrega o histórico de Tentativas, associando-as aos objetos Quiz e Usuário. | **Persistência de Histórico** |
 | | `serializar_objeto`, `desserializar_objeto` | Conversão de objetos para/de dicionários JSON com flags `__class__` e `__enum__`. | **Serialização Customizada** |
+| **Relatórios** | `gerar_relatorio_alunos_por_turma` | Agrupa e lista usuários por turma. | **Funcionalidade de Gestão** |
+| | `export_relatorio_alunos_por_turma_json` | Exporta o relatório de alunos por turma para JSON. | **Exportação de Dados** |
+| | `gerar_relatorio_consolidado` | Gera ranking geral, desempenho por tema e taxa de acerto global. | **Análise de Desempenho** |
+| | `export_relatorio_consolidado_json` | Exporta o relatório consolidado para JSON. | **Exportação de Dados** |
 | **Tentativa** | `registrar_resposta` | Registra a escolha do usuário, validando o tipo de resposta. | |
 | | `finalizar_tentativa` | Calcula a pontuação e marca como concluída. | **Lógica de Negócio** |
 | | `obter_gabarito` | Retorna um resumo detalhado das respostas e acertos. | |
@@ -102,8 +103,88 @@ As classes foram implementadas com foco em **encapsulamento** e **imutabilidade*
 | Tentativa | * | é de | 1 | Quiz |
 | Tentativa | * | é de | 1 | Usuario |
 
+
+## 4. Como Executar
+
+O projeto Quizito é uma aplicação de linha de comando (CLI) desenvolvida em Python.
+
+### 4.1. Pré-requisitos
+
+Certifique-se de ter o **Python 3.x** instalado em seu sistema.
+
+### 4.2. Instalação
+
+Como o projeto utiliza apenas bibliotecas padrão do Python, não é necessário instalar dependências adicionais via `pip`.
+
+1.  **Clone o repositório** (ou descompacte o arquivo do projeto):
+    ```bash
+    git clone [URL_DO_SEU_REPOSITORIO]
+    cd Quizito
+    ```
+
+### 4.3. Execução
+
+Execute o arquivo principal `main.py` diretamente:
+
+```bash
+python3 main.py
+```
+
+Isso iniciará o menu principal da aplicação, onde você poderá selecionar um usuário, executar quizzes, gerenciar perguntas e acessar os relatórios.
+
+
+## 5. Exemplos de Uso (Interação CLI)
+
+A aplicação é totalmente orientada por menus de texto. Abaixo estão exemplos de como interagir com as principais funcionalidades.
+
+### 5.1. Menu Principal
+
+Ao executar `python3 main.py`, o menu principal é exibido:
+
+```
+--- Quizito CLI ---
+[1] Iniciar Quiz
+[2] Selecionar/Cadastrar Usuário
+[3] Gerenciar Quizzes
+[4] Relatórios
+[5] Sair
+Escolha uma opção:
+```
+
+### 5.2. Executando um Quiz
+
+1.  Selecione **[1] Iniciar Quiz**.
+2.  Selecione o quiz desejado (ex: `[0] Quiz de Exemplo`).
+3.  Selecione o usuário (ou cadastre um novo).
+4.  O quiz será iniciado, e o tempo será cronometrado.
+
+### 5.3. Gerenciando Quizzes (Criação de Pergunta)
+
+1.  Selecione **[3] Gerenciar Quizzes** no menu principal.
+2.  Selecione **[2] Adicionar Pergunta** ao quiz ativo.
+3.  Escolha o tipo de pergunta (ex: `[1] Múltipla Escolha`).
+4.  Siga as instruções para preencher o enunciado, tema, dificuldade, alternativas e índice correto.
+
+### 5.4. Exportando Relatórios
+
+1.  Selecione **[4] Relatórios** no menu principal.
+2.  Para exportar o relatório consolidado, selecione **[4] Relatório Consolidado (Exportar JSON)**.
+3.  Informe o caminho do arquivo (ex: `rel_consolidado.json`).
+
+```
+--- Relatórios ---
+[1] Alunos por Turma (Imprimir)
+[2] Alunos por Turma (Exportar JSON)
+[3] Relatório Consolidado (Imprimir)
+[4] Relatório Consolidado (Exportar JSON)
+[5] Voltar
+Escolha uma opção: 4
+Caminho para salvar JSON (ex: rel_consolidado.json): relatorios/desempenho_geral.json
+Relatório salvo em relatorios/desempenho_geral.json
+```
+
 ---
 **Desenvolvido por:** David Josué Vital Santos
 **Instituição:** Universidade Federal do Cariri (UFCA)
 **Disciplina:** Programação Orientada a Objetos (POO)
-**Status:** Controle de tentativas, tempo limite e pontuação ponderada. CLI mínima funcional. (Semana 4)
+**Status:** Implementação completa da CLI com controle de tentativas, tempo limite, pontuação ponderada e relatórios consolidados de desempenho.

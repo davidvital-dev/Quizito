@@ -32,6 +32,7 @@ def serializar_objeto(obj: Any) -> Dict[str, Any]:
     if isinstance(obj, Quiz):
         return {
             "__class__": "Quiz",
+            "id": obj.id,
             "titulo": obj.titulo,
             "perguntas": [serializar_objeto(p) for p in obj.perguntas],
             "max_tentativas": obj.max_tentativas,
@@ -43,12 +44,14 @@ def serializar_objeto(obj: Any) -> Dict[str, Any]:
             "__class__": "Usuario",
             "nome": obj.nome,
             "email": obj.email,
+            "matricula": getattr(obj, '_matricula', None),
+            "turma": getattr(obj, '_turma', None),
         }
 
     if isinstance(obj, Tentativa):
         return {
             "__class__": "Tentativa",
-            "quiz_titulo": obj.quiz.titulo,
+            "quiz_id": obj.quiz.id,
             "usuario_email": obj.usuario.email,
             "respostas": obj._respostas, 
             "pontuacao_obtida": obj.pontuacao_obtida,
@@ -87,6 +90,7 @@ def desserializar_objeto(data: Dict[str, Any]) -> Any:
         if class_name == "Quiz":
             perguntas = [desserializar_objeto(p) for p in data["perguntas"]]
             quiz = Quiz(
+                id=data.get("id"),
                 titulo=data["titulo"],
                 perguntas=perguntas,
                 max_tentativas=data["max_tentativas"],
@@ -95,9 +99,14 @@ def desserializar_objeto(data: Dict[str, Any]) -> Any:
             return quiz
 
         if class_name == "Usuario":
+            # Compatibilidade com dados antigos: matricula pode não existir
+            matricula = data.get("matricula", "0000000000")
+            turma = data.get("turma")
             return Usuario(
                 nome=data["nome"],
-                email=data["email"]
+                email=data["email"],
+                matricula=matricula,
+                turma=turma
             )
         if class_name == "Tentativa":
             return data
@@ -187,15 +196,23 @@ def carregar_tentativas(caminho: Path, quizzes: List[Quiz], usuarios: List[Usuar
     
     tentativas_carregadas = []
     
-    quizzes_map = {q.titulo: q for q in quizzes}
+    # Mapeia quizzes por ID (mais robusto)
+    quizzes_map = {q.id: q for q in quizzes}
     usuarios_map = {u.email: u for u in usuarios}
     
     for d in dados:
         if isinstance(d, dict) and d.get('__class__') == 'Tentativa':
-            quiz_titulo = d.get('quiz_titulo')
+            # Tenta buscar pelo ID, ou fallback para o Título (para compatibilidade com dados antigos)
+            quiz_id = d.get('quiz_id')
+            if not quiz_id:
+                # Se for dado antigo que só tem 'quiz_titulo', mapeamos ele por título
+                quiz_titulo = d.get('quiz_titulo')
+                quiz_map_titulo = {q.titulo: q for q in quizzes}
+                quiz = quiz_map_titulo.get(quiz_titulo)
+            else:
+                quiz = quizzes_map.get(quiz_id) # Busca pelo ID
+                
             usuario_email = d.get('usuario_email')
-            
-            quiz = quizzes_map.get(quiz_titulo)
             usuario = usuarios_map.get(usuario_email)
             
             if quiz and usuario:

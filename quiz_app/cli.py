@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from quiz_app.modelos import Quiz, Usuario, Tentativa, Dificuldade, PerguntaMultiplaEscolha, PerguntaVerdadeiroFalso, Cronometro
 from quiz_app.dados import carregar_quizes, salvar_quizes, carregar_usuarios, salvar_usuarios, carregar_configuracoes, carregar_tentativas, salvar_tentativas
+from quiz_app.relatorios import imprimir_relatorio_alunos_por_turma, export_relatorio_alunos_por_turma_json, imprimir_relatorio_consolidado, export_relatorio_consolidado_json
 
 
 QUIZ_PATH = Path("quiz.json")
@@ -32,9 +33,14 @@ def obter_entrada(prompt: str, tipo: type = str, validacao: Optional[Any] = None
     while True:
         try:
             entrada = input(prompt).strip()
-            if not entrada and default is not None:
-                return default
             if not entrada:
+                if default is not None:
+                    return default
+                
+                # Se o default for None, permite entrada vazia e retorna None (ou string vazia se for o caso)
+                if default is None:
+                    return None
+                    
                 raise ValueError("A entrada não pode ser vazia.")
             
             
@@ -78,7 +84,8 @@ def carregar_dados_iniciais():
     USUARIOS = carregar_usuarios(USUARIOS_PATH)
     if not USUARIOS:
         print("Aviso: Arquivo de usuários não encontrado. Criando um usuário de exemplo.")
-        USUARIOS.append(Usuario("Visitante", "visitante@quizito.com"))
+        # Matrícula default para usuário de exemplo: 0000000000
+        USUARIOS.append(Usuario("Visitante", "visitante@quizito.com", "0000000000"))
         
     TENTATIVAS = carregar_tentativas(TENTATIVAS_PATH, QUIZES, USUARIOS)
 
@@ -101,7 +108,18 @@ def selecionar_usuario(usuarios: List[Usuario]) -> Usuario:
             print("\n--- Cadastro de Novo Usuário ---")
             nome = obter_entrada("Nome: ")
             email = obter_entrada("Email: ", validacao=lambda e: '@' in e)
-            novo_usuario = Usuario(nome, email)
+            # Matrícula: exatamente 10 dígitos
+            while True:
+                matricula = obter_entrada("Matrícula (10 dígitos): ")
+                if matricula.isdigit() and len(matricula) == 10:
+                    if any(u for u in usuarios if getattr(u, '_matricula', None) == matricula or u.email == email):
+                        print("Erro: Já existe um usuário com essa matrícula ou email.")
+                        continue
+                    break
+                print("Matrícula inválida. Deve conter exatamente 10 dígitos numéricos.")
+
+            turma = obter_entrada("Turma (opcional, pressione Enter para pular): ", default=None)
+            novo_usuario = Usuario(nome, email, matricula, turma)
             usuarios.append(novo_usuario)
             salvar_dados_atuais()
             print(f"Usuário {nome} cadastrado e selecionado.")
@@ -446,7 +464,8 @@ def menu_principal():
         print("[1] Iniciar Quiz")
         print("[2] Selecionar/Cadastrar Usuário")
         print("[3] Gerenciar Quizzes")
-        print("[4] Sair")
+        print("[4] Relatórios")
+        print("[5] Sair")
         print("-" * 30)
         
         escolha = input("Escolha uma opção: ").strip()
@@ -466,7 +485,53 @@ def menu_principal():
         elif escolha == '3':
             menu_gerenciar_quiz()
         elif escolha == '4':
+            menu_relatorios()
+        elif escolha == '5':
             print("Obrigado por usar o Quizito. Até mais!")
+            break
+        elif escolha == '4':
+            # antiga opção 4 (agora sobrescrita)
+            continue
+        else:
+            print("Opção inválida. Tente novamente.")
+            input("Pressione Enter para continuar.")
+
+
+def menu_relatorios():
+    while True:
+        limpar_tela()
+        print("--- Relatórios ---")
+        print("[1] Alunos por Turma (Imprimir)")
+        print("[2] Alunos por Turma (Exportar JSON)")
+        print("[3] Relatório Consolidado (Imprimir)")
+        print("[4] Relatório Consolidado (Exportar JSON)")
+        print("[5] Voltar")
+        escolha = input("Escolha uma opção: ").strip()
+        if escolha == '1':
+            limpar_tela()
+            imprimir_relatorio_alunos_por_turma(USUARIOS)
+            input('\nPressione Enter para continuar.')
+        elif escolha == '2':
+            caminho = obter_entrada("Caminho para salvar JSON (ex: rel_alunos.json): ")
+            try:
+                export_relatorio_alunos_por_turma_json(USUARIOS, caminho)
+                print(f"Relatório salvo em {caminho}")
+            except Exception as e:
+                print(f"Erro ao salvar JSON: {e}")
+            input('\nPressione Enter para continuar.')
+        elif escolha == '3':
+            limpar_tela()
+            imprimir_relatorio_consolidado(USUARIOS, CONFIGURACOES.get('PESOS_DIFICULDADE', {}))
+            input('\nPressione Enter para continuar.')
+        elif escolha == '4':
+            caminho = obter_entrada("Caminho para salvar JSON (ex: rel_consolidado.json): ")
+            try:
+                export_relatorio_consolidado_json(USUARIOS, CONFIGURACOES.get('PESOS_DIFICULDADE', {}), caminho)
+                print(f"Relatório salvo em {caminho}")
+            except Exception as e:
+                print(f"Erro ao salvar JSON: {e}")
+            input('\nPressione Enter para continuar.')
+        elif escolha == '5':
             break
         else:
             print("Opção inválida. Tente novamente.")

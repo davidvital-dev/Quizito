@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List, Optional, Dict, Tuple, Any
 import time
 from abc import ABC, abstractmethod 
+import uuid 
 
 class Dificuldade(Enum):
     """Define os níveis de dificuldade válidos para as perguntas."""
@@ -152,7 +153,9 @@ class Quiz:
     Garante unicidade de perguntas e configurações do teste.
     """
     def __init__(self, titulo: str, perguntas: Optional[List[Pergunta]] = None, 
-                 max_tentativas: int = 1, tempo_limite_min: Optional[int] = None):
+                 max_tentativas: int = 1, tempo_limite_min: Optional[int] = None,
+                 id: Optional[str] = None):
+        self._id = id if id else str(uuid.uuid4())
         self._titulo = titulo
         self._perguntas: List[Pergunta] = []
         self._max_tentativas = max_tentativas
@@ -160,6 +163,10 @@ class Quiz:
         if perguntas:
             for p in perguntas:
                 self.adicionar_pergunta(p)
+
+    @property
+    def id(self) -> str:
+        return self._id
 
     @property
     def titulo(self) -> str:
@@ -192,9 +199,15 @@ class Usuario:
     """
     Participante do sistema. Mantém histórico de tentativas.
     """
-    def __init__(self, nome: str, email: str):
+    def __init__(self, nome: str, email: str, matricula: str, turma: Optional[str] = None):
+        # Validação da matrícula: exatamente 10 dígitos numéricos
+        if not (isinstance(matricula, str) and matricula.isdigit() and len(matricula) == 10):
+            raise ValueError("Matrícula inválida. Deve conter exatamente 10 dígitos numéricos.")
+
         self._nome = nome
         self._email = email
+        self._matricula = matricula
+        self._turma = turma
         self._tentativas: List['Tentativa'] = []
 
     @property
@@ -216,17 +229,26 @@ class Usuario:
         self._tentativas.append(tentativa)
 
     def __str__(self) -> str:
-        return f"{self._nome} ({self._email}) | Histórico: {len(self._tentativas)} quizzes"
+        turma_txt = f" - Turma: {self._turma}" if self._turma else ""
+        return f"{self._nome} ({self._email}) | Matrícula: {self._matricula}{turma_txt} | Histórico: {len(self._tentativas)} quizzes"
+
+    @property
+    def matricula(self) -> str:
+        return self._matricula
+
+    @property
+    def turma(self) -> Optional[str]:
+        return self._turma
 
     
     def pode_tentar(self, quiz: Quiz) -> bool:
         """Verifica se o usuário pode realizar o quiz com base no limite de tentativas."""
         if quiz.max_tentativas is None:
-            return True # Sem limite
+            return True
         tentativas_concluidas = 0
         for tentativa in self._tentativas:
-            # Compara o quiz pelo título para simplificar, mas o ideal seria por um ID único
-            if tentativa.quiz.titulo == quiz.titulo and tentativa.concluida:
+            # Compara o quiz pelo ID único
+            if tentativa.quiz.id == quiz.id and tentativa.concluida:
                 tentativas_concluidas += 1
         return tentativas_concluidas < quiz.max_tentativas
 
@@ -234,7 +256,7 @@ class Usuario:
         """Gera um relatório consolidado de todas as tentativas do usuário."""
         relatorio = {
             "nome": self.nome,
-            "matricula_id": self.matricula_id,
+            "matricula": self._matricula,
             "total_tentativas": len(self._tentativas),
             "resumos_tentativas": []
         }
@@ -381,3 +403,14 @@ class Cronometro:
     def tempo_decorrido_min(self) -> float:
         """Retorna o tempo decorrido em minutos."""
         return self.tempo_decorrido_seg / 60.0
+
+
+def aplicar_limite_tempo(tempo_final: int, tempo_limite_seg: Optional[int]) -> int:
+    """Aplica o limite de tempo (em segundos) ao tempo final.
+
+    Se `tempo_limite_seg` for None, retorna `tempo_final` sem alteração.
+    Caso contrário, retorna o menor entre `tempo_final` e `tempo_limite_seg`.
+    """
+    if tempo_limite_seg is None:
+        return tempo_final
+    return min(tempo_final, tempo_limite_seg)

@@ -8,10 +8,6 @@ Ponto de entrada principal para a aplicação Quizito CLI.
 import sys
 import os
 
-
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
-
 from quiz_app.cli import menu_principal
 
 def main():
